@@ -1,17 +1,3 @@
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
-local CommF = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_")
-
-if getgenv().Team == "Pirates" then
-    CommF:InvokeServer("SetTeam", "Pirates")
-elseif getgenv().Team == "Marines" then
-    CommF:InvokeServer("SetTeam", "Marines")
-end
-
-task.wait(4)
-
 hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Death), function()
 end)
 hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Respawn), function()
