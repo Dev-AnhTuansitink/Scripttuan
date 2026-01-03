@@ -1,15 +1,88 @@
-local function EquipWeapon(toolName)
-    local lp = game.Players.LocalPlayer
-    if lp and lp.Backpack:FindFirstChild(toolName) and lp.Character and lp.Character:FindFirstChild("Humanoid") then
-        lp.Character.Humanoid:EquipTool(lp.Backpack[toolName])
-    end
+-- [[ FIX TOÀN DIỆN: ANTI-FLING + SMART TWEEN (Dán đè lên dòng 1) ]] --
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local LP = game.Players.LocalPlayer
+
+-- Biến lưu trữ để chống spam Tween
+local CurrentTween = nil
+
+-- Hàm Noclip vĩnh viễn (Đi xuyên tường không bị kẹt)
+task.spawn(function()
+    RunService.Stepped:Connect(function()
+        pcall(function()
+            if LP.Character then
+                for _, part in pairs(LP.Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    end)
+end)
+
+-- Hàm trang bị vũ khí an toàn
+function EquipWeapon(toolName)
+    pcall(function()
+        if LP.Backpack:FindFirstChild(toolName) and LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            LP.Character.Humanoid:EquipTool(LP.Backpack[toolName])
+        end
+    end)
 end
-local function topos(cf)
-    local lp = game.Players.LocalPlayer
-    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-        lp.Character.HumanoidRootPart.CFrame = cf
-    end
+
+-- Hàm di chuyển TỐI ƯU HÓA (Dùng cho tất cả chức năng)
+function topos(target)
+    pcall(function()
+        if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
+        local HRP = LP.Character.HumanoidRootPart
+
+        -- 1. Chuẩn hóa dữ liệu (Dù script truyền vào CFrame hay Vector3 đều nhận hết)
+        local targetCFrame = target
+        if typeof(target) == "Vector3" then
+            targetCFrame = CFrame.new(target)
+        end
+
+        -- 2. Quản lý lực đẩy (Chỉ cho phép 1 BodyVelocity tồn tại -> Không bao giờ bị bay lên trời)
+        local bv = HRP:FindFirstChild("FixVelocity")
+        if not bv then
+            bv = Instance.new("BodyVelocity")
+            bv.Name = "FixVelocity"
+            bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+            bv.Velocity = Vector3.zero
+            bv.Parent = HRP
+        end
+
+        -- 3. Tính toán khoảng cách
+        local Dist = (HRP.Position - targetCFrame.Position).Magnitude
+        
+        if Dist < 50 then
+            -- Gần: Dịch chuyển ngay lập tức (Không dùng Tween để đỡ lag)
+            if CurrentTween then CurrentTween:Cancel() end
+            HRP.CFrame = targetCFrame
+            HRP.Velocity = Vector3.zero
+        else
+            -- Xa: Dùng Tween (Chỉ tạo Tween mới nếu khoảng cách thay đổi lớn)
+            local Speed = 320 
+            local Time = Dist / Speed
+            local Info = TweenInfo.new(Time, Enum.EasingStyle.Linear)
+            
+            -- Nếu chưa có tween hoặc mục tiêu thay đổi thì mới tạo tween mới
+            if not CurrentTween or CurrentTween.PlaybackState ~= Enum.PlaybackState.Playing then
+                CurrentTween = TweenService:Create(HRP, Info, {CFrame = targetCFrame})
+                CurrentTween:Play()
+            end
+            
+            -- Cập nhật lại CFrame của tween nếu đang chạy (tránh tạo object mới)
+             local tween = TweenService:Create(HRP, Info, {CFrame = targetCFrame})
+             tween:Play()
+        end
+        
+        -- 4. Reset vận tốc (Chống văng)
+        HRP.Velocity = Vector3.zero
+        HRP.AssemblyLinearVelocity = Vector3.zero
+    end)
 end
+-- [[ HẾT ĐOẠN FIX ]] --
 
 hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Death), function()
 end)
