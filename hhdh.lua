@@ -1,3 +1,16 @@
+local function EquipWeapon(toolName)
+    local lp = game.Players.LocalPlayer
+    if lp and lp.Backpack:FindFirstChild(toolName) and lp.Character and lp.Character:FindFirstChild("Humanoid") then
+        lp.Character.Humanoid:EquipTool(lp.Backpack[toolName])
+    end
+end
+local function topos(cf)
+    local lp = game.Players.LocalPlayer
+    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        lp.Character.HumanoidRootPart.CFrame = cf
+    end
+end
+
 hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Death), function()
 end)
 hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Respawn), function()
@@ -9603,51 +9616,45 @@ local function vu1336()
     end
 end
 local function vu1346()
-    local v1337, v1338, v1339 = pairs(workspace.Enemies:GetChildren())
-    local v1340 = {}
-    while true do
-        local v1341
-        v1339, v1341 = v1337(v1338, v1339)
-        if v1339 == nil then
-            break
-        end
-        if v1341:FindFirstChild("HumanoidRootPart") and (v1341:FindFirstChild("Humanoid") and (v1341.Humanoid.Health > 0 and (v1341.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= 1000)) then
-            table.insert(v1340, v1341)
+    -- 1. Lấy danh sách quái trong phạm vi 1000 studs
+    local enemies = workspace.Enemies:GetChildren()
+    local targets = {}
+    
+    local MyChar = game.Players.LocalPlayer.Character
+    local MyRoot = MyChar and MyChar:FindFirstChild("HumanoidRootPart")
+
+    if MyRoot then
+        for _, enemy in pairs(enemies) do
+            if enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                if (enemy.HumanoidRootPart.Position - MyRoot.Position).Magnitude <= 1000 then
+                    table.insert(targets, enemy)
+                end
+            end
         end
     end
-   local v1342, v1343, v1344 = pairs(v1340)
-	-- ::l13::
-    if false then
-        return
-    end
-    local v1345
-    v1344, v1345 = v1342(v1343, v1344)
-    if v1344 == nil then
-        break
-    end
-    while true do
-        task.wait(0.1)
-        if v1345:FindFirstChild("Humanoid") and v1345.Humanoid.Health > 0 then
-            EquipWeapon(_G.SelectWeapon)
-            topos(v1345.HumanoidRootPart.CFrame * CFrame.new(0, 30, 0))
-        end
-        if not v1345:FindFirstChild("Humanoid") or v1345.Humanoid.Health <= 0 then
-			-- goto l13
+
+    -- 2. Bắt đầu tấn công từng con trong danh sách
+    for _, v1345 in pairs(targets) do
+        -- Vòng lặp tấn công: Chạy khi quái còn sống
+        while v1345 and v1345.Parent and v1345:FindFirstChild("Humanoid") and v1345.Humanoid.Health > 0 do
+            task.wait(0.1)
+            
+            -- Kiểm tra RootPart để tránh lỗi
+            if v1345:FindFirstChild("HumanoidRootPart") then
+                pcall(function()
+                    -- Gọi hàm EquipWeapon và topos (BẠN PHẢI DÁN HÀM NÀY Ở ĐẦU FILE NHƯ MÌNH DẶN TRƯỚC ĐÓ)
+                    if _G.SelectWeapon then
+                        EquipWeapon(_G.SelectWeapon) 
+                    end
+                    topos(v1345.HumanoidRootPart.CFrame * CFrame.new(0, 30, 0))
+                end)
+            else
+                break -- Thoát nếu quái mất xác
+            end
         end
     end
 end
 
-task.spawn(function()
-	-- upvalues: (ref) vu1346, (ref) vu1336
-    while task.wait() do
-        if _G.Dungeon then
-            vu1346()
-            if vu1336() then
-                topos(vu1336().CFrame * CFrame.new(0, 60, 0))
-            end
-        end
-    end
-end)
 v644:AddToggle({
     ["Name"] = "Auto Get Fruit Low Beli",
     ["Description"] = "T\225\187\177 \196\144\225\187\153ng L\225\186\165y Tr\195\161i \195\141t Beli",
