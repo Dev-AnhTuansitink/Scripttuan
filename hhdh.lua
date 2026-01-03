@@ -1,88 +1,113 @@
--- [[ FIX TOÀN DIỆN: ANTI-FLING + SMART TWEEN (Dán đè lên dòng 1) ]] --
+-- [[ ULTRA PACK: FIX LAG + GOM QUÁI + AUTO HAKI + SMART TWEEN ]] --
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local LP = game.Players.LocalPlayer
+local LocalPlayer = game.Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
 
--- Biến lưu trữ để chống spam Tween
-local CurrentTween = nil
+-- Cài đặt mặc định
+_G.AutoFarm = true 
+_G.FastAttack = true
+_G.BringMob = true -- Tự động bật gom quái
 
--- Hàm Noclip vĩnh viễn (Đi xuyên tường không bị kẹt)
+-- 1. HÀM GOM QUÁI & HITBOX TO (Bú từ file xịn)
 task.spawn(function()
-    RunService.Stepped:Connect(function()
-        pcall(function()
-            if LP.Character then
-                for _, part in pairs(LP.Character:GetDescendants()) do
-                    if part:IsA("BasePart") and part.CanCollide then
-                        part.CanCollide = false
+    while task.wait() do
+        if _G.AutoFarm or _G.BringMob then
+            pcall(function()
+                -- Mở rộng bán kính mô phỏng để gom quái từ xa
+                sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+                
+                -- Lặp qua quái để gom
+                for _, enemy in pairs(Workspace.Enemies:GetChildren()) do
+                    if enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") and enemy.Humanoid.Health > 0 then
+                        -- Chỉ gom quái ở gần (dưới 350m) để tránh lỗi kick
+                        if (enemy.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 350 then
+                            enemy.HumanoidRootPart.CanCollide = false
+                            enemy.HumanoidRootPart.Size = Vector3.new(60, 60, 60) -- Hitbox siêu to khổng lồ
+                            enemy.HumanoidRootPart.Transparency = 0.5
+                            enemy.Humanoid.WalkSpeed = 0 -- Trói chân quái
+                            
+                            -- Gom lại 1 chỗ (Dưới chân mình)
+                            if LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                                enemy.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 4, -5)
+                            end
+                        end
                     end
                 end
-            end
-        end)
-    end)
+            end)
+        end
+    end
 end)
 
--- Hàm trang bị vũ khí an toàn
-function EquipWeapon(toolName)
-    pcall(function()
-        if LP.Backpack:FindFirstChild(toolName) and LP.Character and LP.Character:FindFirstChild("Humanoid") then
-            LP.Character.Humanoid:EquipTool(LP.Backpack[toolName])
-        end
-    end)
-end
-
--- Hàm di chuyển TỐI ƯU HÓA (Dùng cho tất cả chức năng)
-function topos(target)
-    pcall(function()
-        if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
-        local HRP = LP.Character.HumanoidRootPart
-
-        -- 1. Chuẩn hóa dữ liệu (Dù script truyền vào CFrame hay Vector3 đều nhận hết)
-        local targetCFrame = target
-        if typeof(target) == "Vector3" then
-            targetCFrame = CFrame.new(target)
-        end
-
-        -- 2. Quản lý lực đẩy (Chỉ cho phép 1 BodyVelocity tồn tại -> Không bao giờ bị bay lên trời)
-        local bv = HRP:FindFirstChild("FixVelocity")
-        if not bv then
-            bv = Instance.new("BodyVelocity")
-            bv.Name = "FixVelocity"
-            bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-            bv.Velocity = Vector3.zero
-            bv.Parent = HRP
-        end
-
-        -- 3. Tính toán khoảng cách
-        local Dist = (HRP.Position - targetCFrame.Position).Magnitude
-        
-        if Dist < 50 then
-            -- Gần: Dịch chuyển ngay lập tức (Không dùng Tween để đỡ lag)
-            if CurrentTween then CurrentTween:Cancel() end
-            HRP.CFrame = targetCFrame
-            HRP.Velocity = Vector3.zero
-        else
-            -- Xa: Dùng Tween (Chỉ tạo Tween mới nếu khoảng cách thay đổi lớn)
-            local Speed = 320 
-            local Time = Dist / Speed
-            local Info = TweenInfo.new(Time, Enum.EasingStyle.Linear)
-            
-            -- Nếu chưa có tween hoặc mục tiêu thay đổi thì mới tạo tween mới
-            if not CurrentTween or CurrentTween.PlaybackState ~= Enum.PlaybackState.Playing then
-                CurrentTween = TweenService:Create(HRP, Info, {CFrame = targetCFrame})
-                CurrentTween:Play()
+-- 2. AUTO HAKI (Bú từ file xịn)
+task.spawn(function()
+    while task.wait(5) do
+        pcall(function()
+            if not LocalPlayer.Character:FindFirstChild("HasBuso") then
+                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Buso")
             end
-            
-            -- Cập nhật lại CFrame của tween nếu đang chạy (tránh tạo object mới)
-             local tween = TweenService:Create(HRP, Info, {CFrame = targetCFrame})
-             tween:Play()
+        end)
+    end
+end)
+
+-- 3. FAST ATTACK (Click chuột siêu tốc)
+task.spawn(function()
+    local VirtualUser = game:GetService("VirtualUser")
+    while task.wait() do
+        if _G.AutoFarm then
+            VirtualUser:CaptureController()
+            VirtualUser:Button1Down(Vector2.new(1280, 672)) -- Click vào giữa màn hình
         end
-        
-        -- 4. Reset vận tốc (Chống văng)
-        HRP.Velocity = Vector3.zero
-        HRP.AssemblyLinearVelocity = Vector3.zero
+    end
+end)
+
+-- 4. EQUIP WEAPON (Cầm súng/kiếm)
+function EquipWeapon(ToolName)
+    pcall(function()
+        if LocalPlayer.Backpack:FindFirstChild(ToolName) then
+            LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack:FindFirstChild(ToolName))
+        end
     end)
 end
--- [[ HẾT ĐOẠN FIX ]] --
+
+-- 5. SMART TWEEN (Bay mượt thông minh - Đã tối ưu)
+function topos(TargetCFrame)
+    local Character = LocalPlayer.Character
+    if Character and Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
+        local HRP = Character.HumanoidRootPart
+        local Distance = (HRP.Position - TargetCFrame.Position).Magnitude
+        local Speed = 300 
+
+        -- Logic tốc độ biến thiên
+        if Distance < 150 then Speed = 5000       -- Gần: Lướt ngay lập tức
+        elseif Distance < 500 then Speed = 400    -- Vừa: Bay nhanh
+        elseif Distance >= 1000 then Speed = 315  -- Xa: Bay an toàn
+        end
+        
+        -- Giữ nhân vật không bị rơi
+        local BV = HRP:FindFirstChild("BodyVelocity") or Instance.new("BodyVelocity", HRP)
+        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        BV.Velocity = Vector3.zero
+        
+        -- Bay
+        local TI = TweenInfo.new(Distance / Speed, Enum.EasingStyle.Linear)
+        local Tween = TweenService:Create(HRP, TI, {CFrame = TargetCFrame})
+        Tween:Play()
+        
+        -- Auto Noclip khi bay
+        if not HRP:FindFirstChild("Noclip") then
+            RunService.Stepped:Connect(function()
+                if Character then
+                    for _, v in pairs(Character:GetDescendants()) do
+                        if v:IsA("BasePart") then v.CanCollide = false end
+                    end
+                end
+            end)
+        end
+    end
+end
+-- [[ HẾT PACK ]] --
+
 
 hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Death), function()
 end)
