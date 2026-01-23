@@ -3757,6 +3757,164 @@ R:AddDiscordInvite({
 	Logo = "rbxassetid://128528465536598",
 	Invite = "https://discord.gg/E2N7w35zkt",
 });
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local LocalizationService = game:GetService("LocalizationService")
+
+--// 2. Tạo Section chính
+R:AddSection("Status Server")
+
+--// 3. Hệ thống hiển thị Giờ (Time Zone)
+local TimePara = R:AddParagraph({Title = "Time Zone", Content = "Loading..."})
+
+local function UpdateOS()
+    local LocalPlayer = Players.LocalPlayer
+    local RegionCode = getgenv().countryRegionCode
+
+    -- Lấy Region (Quốc gia) nếu chưa có
+    if not RegionCode then
+        local success, code = pcall(function()
+            return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
+        end)
+        RegionCode = success and code or "Unknown"
+        getgenv().countryRegionCode = RegionCode
+    end
+
+    -- Tính toán ngày giờ
+    local dateTable = os.date("*t")
+    local timeString = string.format("%02d:%02d:%02d %s", 
+        (dateTable.hour - 1) % 12 + 1, 
+        dateTable.min, 
+        dateTable.sec, 
+        dateTable.hour < 12 and "AM" or "PM"
+    )
+    local dateString = string.format("%02d/%02d/%04d", dateTable.day, dateTable.month, dateTable.year)
+
+    -- Cập nhật vào UI
+    TimePara:SetDesc(string.format("%s - %s [ %s ]", dateString, timeString, RegionCode))
+end
+
+task.spawn(function()
+    while true do
+        UpdateOS()
+        task.wait(1)
+    end
+end)
+
+--// 4. Thời gian Server hoạt động (Uptime)
+local UptimePara = R:AddParagraph({Title = "Server Uptime", Content = "Loading..."})
+
+task.spawn(function()
+    while true do
+        local seconds = math.floor(workspace.DistributedGameTime)
+        local hrs = math.floor(seconds / 3600) % 24
+        local mins = math.floor(seconds / 60) % 60
+        local secs = seconds % 60
+        
+        UptimePara:SetDesc(string.format("%d Hour(s) %d Minute(s) %d Second(s)", hrs, mins, secs))
+        task.wait(1)
+    end
+end)
+
+--// 5. Trạng thái Game (Mirage, Kitsune, Boss...)
+-- Tạo các Paragraph trước
+local MiragePara = R:AddParagraph({Title = "Mirage Island", Content = "Status: Loading..."})
+local KitsunePara = R:AddParagraph({Title = "Kitsune Island", Content = "Status: Loading..."})
+local PrehistoricPara = R:AddParagraph({Title = "Prehistoric Island", Content = "Status: Loading..."})
+local FrozenPara = R:AddParagraph({Title = "Frozen Dimension", Content = "Status: Loading..."})
+local CakePrincePara = R:AddParagraph({Title = "Dimension Killed", Content = "Loading..."})
+local RipIndraPara = R:AddParagraph({Title = "Rip_Indra", Content = "Status: Loading..."})
+local DoughKingPara = R:AddParagraph({Title = "Dough King", Content = "Status: Loading..."})
+local EliteHunterPara = R:AddParagraph({Title = "Elite Hunter", Content = "Status: Loading..."})
+local SwordPara = R:AddParagraph({Title = "Legendary Sword", Content = "Status: Loading..."})
+local BonePara = R:AddParagraph({Title = "Bone Balance", Content = "Loading..."})
+
+-- Chạy vòng lặp kiểm tra (Gộp chung để tối ưu FPS)
+task.spawn(function()
+    while true do
+        -- Check Mirage
+        local isMirage = Workspace._WorldOrigin.Locations:FindFirstChild("Mirage Island")
+        MiragePara:SetDesc("Status: " .. (isMirage and "✅" or "❌"))
+
+        -- Check Kitsune
+        local isKitsune = Workspace.Map:FindFirstChild("KitsuneIsland")
+        KitsunePara:SetDesc("Status: " .. (isKitsune and "✅" or "❌"))
+
+        -- Check Prehistoric
+        local isPrehistoric = Workspace._WorldOrigin.Locations:FindFirstChild("Prehistoric Island")
+        PrehistoricPara:SetDesc("Status: " .. (isPrehistoric and "✅" or "❌"))
+
+        -- Check Frozen Dimension
+        local isFrozen = Workspace._WorldOrigin.Locations:FindFirstChild("Frozen Dimension")
+        FrozenPara:SetDesc("Status: " .. (isFrozen and "✅" or "❌"))
+
+        -- Check Rip Indra
+        local isRip = ReplicatedStorage:FindFirstChild("rip_indra True Form") or Workspace.Enemies:FindFirstChild("rip_indra")
+        RipIndraPara:SetDesc("Status: " .. (isRip and "✅" or "❌"))
+
+        -- Check Dough King
+        local isDough = ReplicatedStorage:FindFirstChild("Dough King") or Workspace.Enemies:FindFirstChild("Dough King")
+        DoughKingPara:SetDesc("Status: " .. (isDough and "✅" or "❌"))
+
+        -- Check Cake Prince
+        pcall(function()
+            local cpProgress = ReplicatedStorage.Remotes.CommF_:InvokeServer("CakePrinceSpawner")
+            local cpStatus = "Cake Prince: ✅"
+            if string.len(cpProgress) >= 86 then
+                cpStatus = "Kill: " .. string.sub(cpProgress, 39, 41)
+            end
+            CakePrincePara:SetDesc(cpStatus)
+        end)
+
+        -- Check Elite Hunter
+        pcall(function()
+            local eliteActive = (ReplicatedStorage:FindFirstChild("Diablo") or ReplicatedStorage:FindFirstChild("Deandre") or ReplicatedStorage:FindFirstChild("Urban") or Workspace.Enemies:FindFirstChild("Diablo") or Workspace.Enemies:FindFirstChild("Deandre") or Workspace.Enemies:FindFirstChild("Urban")) and "✅" or "❌"
+            local eliteCount = ReplicatedStorage.Remotes.CommF_:InvokeServer("EliteHunter", "Progress")
+            EliteHunterPara:SetDesc("Status: " .. eliteActive .. " | Killed: " .. eliteCount)
+        end)
+
+        -- Check Legendary Sword
+        pcall(function()
+            local swordStatus = "Not Found"
+            local CommF = ReplicatedStorage.Remotes.CommF_
+            if CommF:InvokeServer("LegendarySwordDealer", "1") then swordStatus = "Shisui"
+            elseif CommF:InvokeServer("LegendarySwordDealer", "2") then swordStatus = "Wando"
+            elseif CommF:InvokeServer("LegendarySwordDealer", "3") then swordStatus = "Saddi"
+            end
+            SwordPara:SetDesc(swordStatus)
+        end)
+
+        -- Check Bones
+        pcall(function()
+            local bones = ReplicatedStorage.Remotes.CommF_:InvokeServer("Bones", "Check")
+            BonePara:SetDesc("You Have: " .. tostring(bones) .. " Bones")
+        end)
+        
+        task.wait(1)
+    end
+end)
+
+--// 6. Full Moon Checker (Check Trăng)
+local FullMoonPara = R:AddParagraph({Title = "Full Moon", Content = "Loading..."})
+
+task.spawn(function()
+    while true do
+        local moonId = Lighting.Sky.MoonTextureId
+        local moonStatus = "Moon: 0/5"
+        
+        if moonId == "http://www.roblox.com/asset/?id=9709149431" then moonStatus = "Moon: 5/5 (Full Moon!)"
+        elseif moonId == "http://www.roblox.com/asset/?id=9709149052" then moonStatus = "Moon: 4/5"
+        elseif moonId == "http://www.roblox.com/asset/?id=9709143733" then moonStatus = "Moon: 3/5"
+        elseif moonId == "http://www.roblox.com/asset/?id=9709150401" then moonStatus = "Moon: 2/5"
+        elseif moonId == "http://www.roblox.com/asset/?id=9709149680" then moonStatus = "Moon: 1/5"
+        end
+        
+        FullMoonPara:SetDesc(moonStatus)
+        task.wait(1)
+    end
+end)
 local A = p:AddSection({ "Select Melee,Sword,Gun,Fruit" });
 _G.SelectWeapon = "Melee";
 task.spawn(function()
@@ -3811,7 +3969,7 @@ local l = p:AddDropdown({
 	});
 local I = p:AddSection({ "Main Farm" });
 p:AddToggle({
-	Name = "Auto Farm Level 1-2650",
+	Name = "Auto Farm Level",
 	Description = "T\225\187\177 \196\145\225\187\153ng farm c\225\186\165p",
 	Default = false,
 	Callback = function(d)
@@ -3918,7 +4076,7 @@ spawn(function()
 	end;
 end);
 p:AddToggle({
-	Title = "Farm Level New 2650 - 2750",
+	Title = "Farm Level New",
 	Description = "C\195\160y C\225\186\165p \225\187\158 \196\144\225\186\163o M\225\187\155i",
 	Value = false,
 	Callback = function(d)
