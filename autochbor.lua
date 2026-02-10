@@ -1,4 +1,6 @@
 getgenv().team = "Marines" -- Change to "Pirates" if preferred
+getgenv().Setting.WhiteScreen = false
+
 repeat wait() until game:IsLoaded() and game.Players.LocalPlayer:FindFirstChild("DataLoaded")
 
 -- Reliable team selection method
@@ -2450,7 +2452,7 @@ local function AntiKick()
                 v1524.BackgroundTransparency = 1;
                 v1524.TextStrokeTransparency = 0.5;
                 v1524.TextColor3 = Color3.fromRGB(80, 245, 245);
-                v1524.Text = "taphoamizu";
+                v1524.Text = "NatAov Hub On Top";
             end
             if game.Players.LocalPlayer.Character.HumanoidRootPart.Velocity.Magnitude < 0.1 then
                 game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 0, 0.01)
