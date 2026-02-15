@@ -2692,7 +2692,7 @@ local function ShootLoop()
     end
 end
 
-Library = loadstring(game:HttpGet("https://luacrack.site/index.php/anhkhoarb500gmail.com/raw/LibraryObii.lua"))()
+Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-AnhTuansitink/Ui_vip_pro/refs/heads/main/ui%20BananaHub.lua.lua"))() 
 
 Window = Library:CreateWindow({
     Title = "NX-NazuX Hub",
